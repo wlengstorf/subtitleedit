@@ -431,24 +431,29 @@ namespace Nikse.SubtitleEdit.Core.SubtitleFormats
             private static string EncodeText(string text, Encoding encoding, string displayStandardCode)
             {
                 // newline
-                string newline = encoding.GetString(new byte[] { 0x8a, 0x8a });
+                string newline = "\u008a";
                 if (Configuration.Settings.SubtitleSettings.EbuStlTeletextUseBox && Configuration.Settings.SubtitleSettings.EbuStlTeletextUseDoubleHeight)
                 {
-                    newline = encoding.GetString(new byte[] { 0x0a, 0x0a, 0x8a, 0x8a, 0x0d, 0x0b, 0x0b }); // 0a==end box, 0d==double height, 0b==start box
+                    newline = encoding.GetString(new byte[] { 0x0a, 0x0a, 0x8a, 0x0d, 0x0b, 0x0b }); // 0a==end box, 0d==double height, 0b==start box
                 }
                 else if (Configuration.Settings.SubtitleSettings.EbuStlTeletextUseBox)
                 {
-                    newline = encoding.GetString(new byte[] { 0x0a, 0x0a, 0x8a, 0x8a, 0x0b, 0x0b }); // 0a==end box, 0b==start box
+                    newline = encoding.GetString(new byte[] { 0x0a, 0x0a, 0x8a, 0x0b, 0x0b }); // 0a==end box, 0b==start box
                 }
                 else if (Configuration.Settings.SubtitleSettings.EbuStlTeletextUseDoubleHeight)
                 {
-                    newline = encoding.GetString(new byte[] { 0x8a, 0x8a, 0x0d, 0x0d }); // 0d==double height
-                }
-                if (displayStandardCode == "0") // 0=Open subtitling
-                {
-                    newline = encoding.GetString(new byte[] { 0x8A }); //8Ah=CR/LF
+                    newline = encoding.GetString(new byte[] { 0x8a, 0x0d, 0x0d }); // 0d==double height
                 }
 
+                var newStr = string.Empty.PadLeft(Configuration.Settings.SubtitleSettings.EbuStlNewLineRows, '\u008a');
+                if (newStr.Length == 1)
+                    newStr = newStr.PadRight(8, ' ');
+                newline = newline.Replace("\u008a",  newStr);
+
+                if (displayStandardCode == "0") // 0=Open subtitling
+                {
+                    newline = "\u008a"; //8Ah=CR/LF
+                }
 
                 var sb = new StringBuilder();
                 var list = text.SplitToLines();
@@ -689,7 +694,7 @@ namespace Nikse.SubtitleEdit.Core.SubtitleFormats
                 else
                 {
                     int startRow = rows - Configuration.Settings.SubtitleSettings.EbuStlMarginBottom -
-                                          (Utilities.GetNumberOfLines(text) - 1) * Configuration.Settings.SubtitleSettings.EbuStlNewLineRows;
+                                          (Utilities.GetNumberOfLines(text) - 1);
                     if (startRow < 0)
                         startRow = 0;
                     tti.VerticalPosition = (byte)startRow; // bottom (vertical)
