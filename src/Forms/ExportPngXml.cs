@@ -711,24 +711,10 @@ namespace Nikse.SubtitleEdit.Forms
                 }
                 else if (_exportType == ExportFormats.DCinemaInterop)
                 {
-                    var doc = new XmlDocument();
-                    string title = "unknown";
-                    if (!string.IsNullOrEmpty(_fileName))
-                        title = Path.GetFileNameWithoutExtension(_fileName);
-
-                    string guid = Guid.NewGuid().ToString().RemoveChar('-').Insert(8, "-").Insert(13, "-").Insert(18, "-").Insert(23, "-");
-                    doc.LoadXml("<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + Environment.NewLine +
-                                "<DCSubtitle Version=\"1.1\">" + Environment.NewLine +
-                                "<SubtitleID>" + guid + "</SubtitleID>" + Environment.NewLine +
-                                "<MovieTitle>" + title + "</MovieTitle>" + Environment.NewLine +
-                                "<ReelNumber>1</ReelNumber>" + Environment.NewLine +
-                                "<Language>English</Language>" + Environment.NewLine +
-                                sb +
-                                "</DCSubtitle>");
                     string fName = saveFileDialog1.FileName;
                     if (!fName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
                         fName += ".xml";
-                    File.WriteAllText(fName, SubtitleFormat.ToUtf8XmlString(doc));
+                    WriteDCinemaInteropFile(imagesSavedCount, sb, fName);
                     MessageBox.Show(string.Format(Configuration.Settings.Language.ExportPngXml.XImagesSavedInY, imagesSavedCount, Path.GetDirectoryName(fName)));
                 }
                 else if (_exportType == ExportFormats.Edl || _exportType == ExportFormats.EdlClipName)
@@ -753,6 +739,7 @@ namespace Nikse.SubtitleEdit.Forms
                 _subtitle.AddTimeToAllParagraphs(TimeSpan.FromMilliseconds(-Configuration.Settings.General.CurrentVideoOffsetInMs));
             }
         }
+
 
         internal void WriteFcpFile(int width, int height, StringBuilder sb, string fileName)
         {
@@ -876,6 +863,25 @@ namespace Nikse.SubtitleEdit.Forms
                 s = s.Replace("<colordepth>32</colordepth>", "<colordepth>8</colordepth>");
 
             File.WriteAllText(fileName, s);
+        }
+
+        internal void WriteDCinemaInteropFile(int imagesSavedCount, StringBuilder sb, string fName)
+        {
+            var doc = new XmlDocument();
+            string title = "unknown";
+            if (!string.IsNullOrEmpty(_fileName))
+                title = Path.GetFileNameWithoutExtension(_fileName);
+
+            string guid = Guid.NewGuid().ToString().RemoveChar('-').Insert(8, "-").Insert(13, "-").Insert(18, "-").Insert(23, "-");
+            doc.LoadXml("<?xml version=\"1.0\" encoding=\"UTF-8\"?>" + Environment.NewLine +
+                        "<DCSubtitle Version=\"1.1\">" + Environment.NewLine +
+                        "<SubtitleID>" + guid + "</SubtitleID>" + Environment.NewLine +
+                        "<MovieTitle>" + title + "</MovieTitle>" + Environment.NewLine +
+                        "<ReelNumber>1</ReelNumber>" + Environment.NewLine +
+                        "<Language>English</Language>" + Environment.NewLine +
+                        sb +
+                        "</DCSubtitle>");
+            File.WriteAllText(fName, SubtitleFormat.ToUtf8XmlString(doc));
         }
 
         internal void WriteBdnXmlFile(int imagesSavedCount, StringBuilder sb, string fileName)
@@ -1354,68 +1360,8 @@ $DROP=[DROPVALUE]" + Environment.NewLine + Environment.NewLine +
                 {
                     if (!param.Saved)
                     {
-                        string numberString = $"{i:0000}";
-                        string fileName = Path.Combine(Path.GetDirectoryName(saveFileDialog1.FileName), numberString + ".png");
-                        param.Bitmap.Save(fileName, ImageFormat.Png);
-                        imagesSavedCount++;
+                        imagesSavedCount = WriteDCInteropXmlParagraph(width, sb, border, height, imagesSavedCount, param, i, Path.GetDirectoryName(saveFileDialog1.FileName));
                         param.Saved = true;
-
-                        string verticalAlignment = "bottom";
-                        string horizontalAlignment = "center";
-                        string vPos = "9.7";
-                        string hPos = "0";
-
-                        switch (param.Alignment)
-                        {
-                            case ContentAlignment.BottomLeft:
-                                verticalAlignment = "bottom";
-                                horizontalAlignment = "left";
-                                hPos = "10";
-                                break;
-                            case ContentAlignment.BottomRight:
-                                verticalAlignment = "bottom";
-                                horizontalAlignment = "right";
-                                hPos = "10";
-                                break;
-                            case ContentAlignment.MiddleCenter:
-                                verticalAlignment = "center";
-                                vPos = "0";
-                                break;
-                            case ContentAlignment.MiddleLeft:
-                                verticalAlignment = "center";
-                                horizontalAlignment = "left";
-                                hPos = "10";
-                                vPos = "0";
-                                break;
-                            case ContentAlignment.MiddleRight:
-                                verticalAlignment = "center";
-                                horizontalAlignment = "right";
-                                hPos = "10";
-                                vPos = "0";
-                                break;
-                            case ContentAlignment.TopCenter:
-                                verticalAlignment = "top";
-                                break;
-                            case ContentAlignment.TopLeft:
-                                verticalAlignment = "top";
-                                horizontalAlignment = "left";
-                                hPos = "10";
-                                break;
-                            case ContentAlignment.TopRight:
-                                verticalAlignment = "top";
-                                horizontalAlignment = "right";
-                                hPos = "10";
-                                break;
-                        }
-
-                        sb.AppendLine("<Subtitle FadeDownTime=\"" + 0 + "\" FadeUpTime=\"" + 0 + "\" TimeOut=\"" + DCinemaInterop.ConvertToTimeString(param.P.EndTime) + "\" TimeIn=\"" + DCinemaInterop.ConvertToTimeString(param.P.StartTime) + "\" SpotNumber=\"" + param.P.Number + "\">");
-                        if (param.Depth3D == 0)
-
-                            sb.AppendLine("<Image VPosition=\"" + vPos + "\" HPosition=\"" + hPos + "\" VAlign=\"" + verticalAlignment + "\" HAlign=\"" + horizontalAlignment + "\">" + numberString + ".png" + "</Image>");
-
-                        else
-                            sb.AppendLine("<Image VPosition=\"" + vPos + "\" HPosition=\"" + hPos + "\" ZPosition=\"" + param.Depth3D + "\" VAlign=\"" + verticalAlignment + "\" HAlign=\"" + horizontalAlignment + "\">" + numberString + ".png" + "</Image>");
-                        sb.AppendLine("</Subtitle>");
                     }
                 }
                 else if (_exportType == ExportFormats.Edl || _exportType == ExportFormats.EdlClipName)
@@ -1615,6 +1561,76 @@ $DROP=[DROPVALUE]" + Environment.NewLine + Environment.NewLine +
             template = template.Replace("[TIMEBASE]", timeBase.ToString(CultureInfo.InvariantCulture));
             template = template.Replace("[NTSC]", ntsc);
             sb.AppendLine(template);
+            return imagesSavedCount;
+        }
+
+
+        internal int WriteDCInteropXmlParagraph(int width, StringBuilder sb, int border, int height, int imagesSavedCount, MakeBitmapParameter param, int i, string path)
+        {
+            string numberString = $"{i:0000}";
+            string fileName = Path.Combine(path, numberString + ".png");
+
+            //string fileName = Path.Combine(Path.GetDirectoryName(saveFileDialog1.FileName), numberString + ".png");
+            param.Bitmap.Save(fileName, ImageFormat.Png);
+            imagesSavedCount++;
+            param.Saved = true;
+
+            string verticalAlignment = "bottom";
+            string horizontalAlignment = "center";
+            string vPos = "9.7";
+            string hPos = "0";
+
+            switch (param.Alignment)
+            {
+                case ContentAlignment.BottomLeft:
+                    verticalAlignment = "bottom";
+                    horizontalAlignment = "left";
+                    hPos = "10";
+                    break;
+                case ContentAlignment.BottomRight:
+                    verticalAlignment = "bottom";
+                    horizontalAlignment = "right";
+                    hPos = "10";
+                    break;
+                case ContentAlignment.MiddleCenter:
+                    verticalAlignment = "center";
+                    vPos = "0";
+                    break;
+                case ContentAlignment.MiddleLeft:
+                    verticalAlignment = "center";
+                    horizontalAlignment = "left";
+                    hPos = "10";
+                    vPos = "0";
+                    break;
+                case ContentAlignment.MiddleRight:
+                    verticalAlignment = "center";
+                    horizontalAlignment = "right";
+                    hPos = "10";
+                    vPos = "0";
+                    break;
+                case ContentAlignment.TopCenter:
+                    verticalAlignment = "top";
+                    break;
+                case ContentAlignment.TopLeft:
+                    verticalAlignment = "top";
+                    horizontalAlignment = "left";
+                    hPos = "10";
+                    break;
+                case ContentAlignment.TopRight:
+                    verticalAlignment = "top";
+                    horizontalAlignment = "right";
+                    hPos = "10";
+                    break;
+            }
+
+            sb.AppendLine("<Subtitle FadeDownTime=\"" + 0 + "\" FadeUpTime=\"" + 0 + "\" TimeOut=\"" + DCinemaInterop.ConvertToTimeString(param.P.EndTime) + "\" TimeIn=\"" + DCinemaInterop.ConvertToTimeString(param.P.StartTime) + "\" SpotNumber=\"" + param.P.Number + "\">");
+            if (param.Depth3D == 0)
+
+                sb.AppendLine("<Image VPosition=\"" + vPos + "\" HPosition=\"" + hPos + "\" VAlign=\"" + verticalAlignment + "\" HAlign=\"" + horizontalAlignment + "\">" + numberString + ".png" + "</Image>");
+
+            else
+                sb.AppendLine("<Image VPosition=\"" + vPos + "\" HPosition=\"" + hPos + "\" ZPosition=\"" + param.Depth3D + "\" VAlign=\"" + verticalAlignment + "\" HAlign=\"" + horizontalAlignment + "\">" + numberString + ".png" + "</Image>");
+            sb.AppendLine("</Subtitle>");
             return imagesSavedCount;
         }
 

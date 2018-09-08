@@ -81,6 +81,7 @@ namespace Nikse.SubtitleEdit.Logic
                     _stdOutWriter.WriteLine("- For DOST/image .dost/image output use: '" + BatchConvert.DostImageSubtitle.RemoveChar(' ') + "'");
                     _stdOutWriter.WriteLine("- For BDN/XML .xml/image output use: '" + BatchConvert.BdnXmlSubtitle.RemoveChar(' ') + "'");
                     _stdOutWriter.WriteLine("- For FCP/image .xml/image output use: '" + BatchConvert.FcpImageSubtitle.RemoveChar(' ') + "'");
+                    _stdOutWriter.WriteLine("- For DCInterop/png .xml/png output use: '" + BatchConvert.DcXmlSubtitle.RemoveChar(' ') + "'");
                 }
                 else
                 {
@@ -1328,7 +1329,61 @@ namespace Nikse.SubtitleEdit.Logic
                         }
                         _stdOutWriter?.WriteLine(" done.");
                     }
+                    else if (BatchConvert.DcXmlSubtitle.RemoveChar(' ').Equals(targetFormat.RemoveChar(' '), StringComparison.OrdinalIgnoreCase))
+                    {
+                        targetFormatFound = true;
+                        outputFileName = FormatOutputFileNameForBatchConvert(fileName, ".xml", outputFolder, overwrite);
+                        _stdOutWriter?.Write($"{count}: {Path.GetFileName(fileName)} -> {outputFileName}...");
+                        using (var form = new ExportPngXml())
+                        {
+                            form.Initialize(sub, format, ExportPngXml.ExportFormats.DCinemaInterop, fileName, null, null);
 
+                            int width = 1920;
+                            int height = 1080;
+                            if (!string.IsNullOrEmpty(Configuration.Settings.Tools.ExportBluRayVideoResolution))
+                            {
+                                var parts = Configuration.Settings.Tools.ExportBluRayVideoResolution.Split('x');
+                                if (parts.Length == 2 && Utilities.IsInteger(parts[0]) && Utilities.IsInteger(parts[1]))
+                                {
+                                    width = int.Parse(parts[0]);
+                                    height = int.Parse(parts[1]);
+                                }
+                            }
+                            if (res != null)
+                            {
+                                width = res.Value.X;
+                                height = res.Value.Y;
+                            }
+
+                            var sb = new StringBuilder();
+                            var imagesSavedCount = 0;
+                            var isImageBased = IsImageBased(format);
+                            for (int index = 0; index < sub.Paragraphs.Count; index++)
+                            {
+                                var mp = form.MakeMakeBitmapParameter(index, width, height);
+                                mp.LineJoin = Configuration.Settings.Tools.ExportPenLineJoin;
+                                if (isImageBased)
+                                {
+                                    using (var ms = new MemoryStream(File.ReadAllBytes(Path.Combine(Path.GetDirectoryName(fileName), sub.Paragraphs[index].Text))))
+                                    {
+                                        mp.Bitmap = (Bitmap)Image.FromStream(ms);
+                                    }
+                                }
+                                else
+                                {
+                                    mp.Bitmap = ExportPngXml.GenerateImageFromTextWithStyle(mp);
+                                }
+
+                                imagesSavedCount = form.WriteDCInteropXmlParagraph(width, sb, form.GetBottomMarginInPixels(sub.Paragraphs[index]), height, imagesSavedCount, mp, index + 1, Path.GetDirectoryName(outputFileName));
+                                if (index % 50 == 0)
+                                {
+                                    System.Windows.Forms.Application.DoEvents();
+                                }
+                            }
+                            form.WriteDCinemaInteropFile(imagesSavedCount, sb, outputFileName);
+                        }
+                        _stdOutWriter?.WriteLine(" done.");
+                    }
                     else if (BatchConvert.BdnXmlSubtitle.RemoveChar(' ').Equals(targetFormat.RemoveChar(' '), StringComparison.OrdinalIgnoreCase))
                     {
                         targetFormatFound = true;
@@ -1336,6 +1391,8 @@ namespace Nikse.SubtitleEdit.Logic
                         _stdOutWriter?.Write($"{count}: {Path.GetFileName(fileName)} -> {outputFileName}...");
                         using (var form = new ExportPngXml())
                         {
+                            _stdOutWriter?.Write($"generating form format:{format}...sub:{sub}...filename:{fileName}...");
+
                             form.Initialize(sub, format, ExportPngXml.ExportFormats.BdnXml, fileName, null, null);
                             int width = 1920;
                             int height = 1080;

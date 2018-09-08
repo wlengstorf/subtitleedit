@@ -72,6 +72,7 @@ namespace Nikse.SubtitleEdit.Forms
         public const string VobSubSubtitle = "VobSub";
         public const string DostImageSubtitle = "Dost-image";
         public const string BdnXmlSubtitle = "BDN-XML";
+        public const string DcXmlSubtitle = "DC-XML";
         public const string FcpImageSubtitle = "FCP-image";
         private string _customTextTemplate;
         private readonly DurationsBridgeGaps _bridgeGaps;
